@@ -97,7 +97,7 @@
             <input type="text" id="input-catatan" placeholder="Contoh: Minta penjemputan di lobby belakang" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 focus:ring-indigo-500 focus:border-indigo-500">
           </div>
 
-          <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-200 transition flex items-center justify-center gap-2">
+          <button type="submit" id="submit-btn" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-200 transition flex items-center justify-center gap-2">
             <i data-lucide="send" class="w-4 h-4"></i> Kirim Absen & Transportasi
           </button>
         </form>
@@ -112,18 +112,17 @@
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
         <div>
           <div class="flex items-center gap-2">
-            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">Host Dashboard</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Firebase Realtime Connected
+            </span>
             <h2 class="text-xl font-bold text-slate-800">Pusat Data Absensi Per Hotel</h2>
           </div>
-          <p class="text-sm text-slate-500 mt-1">Setiap karyawan yang mengisi form absensi akan tersortir otomatis ke dalam masing-masing hotel tujuan.</p>
+          <p class="text-sm text-slate-500 mt-1">Setiap karyawan yang mengisi form absensi akan tersortir otomatis secara real-time ke dalam hotel tujuan.</p>
         </div>
         
         <div class="flex items-center gap-3">
           <button onclick="addHotelModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-lg shadow-sm transition flex items-center gap-2">
             <i data-lucide="plus" class="w-4 h-4"></i> Tambah Hotel Baru
-          </button>
-          <button onclick="resetDataDemo()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm rounded-lg transition" title="Reset Data Demo">
-            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
           </button>
         </div>
       </div>
@@ -136,32 +135,60 @@
 
   </main>
 
-  <script>
-    // --- DATA DEFAULT (STORED IN LOCALSTORAGE) ---
-    const DEFAULT_HOTELS = ["Hotel Grand Cokro", "Hotel Rasuna", "Hotel GBK"];
-    
-    const DEFAULT_LOGS = [
-      {
-        id: "1",
-        nama: "ASRI",
-        divisi: "ABC",
-        tujuan: "LEBAK BULUS",
-        jam: "12.00",
-        hotel: "Hotel Rasuna",
-        catatan: "Bawa perlengkapan alat",
-        tanggal: new Date().toLocaleDateString('id-ID')
-      }
-    ];
+  <!-- FIREBASE SDKs (Web Modul Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
-    let hotelList = JSON.parse(localStorage.getItem('app_hotel_list')) || DEFAULT_HOTELS;
-    let attendanceLogs = JSON.parse(localStorage.getItem('app_attendance_logs_v2')) || DEFAULT_LOGS;
+  <script>
+    // --- FIREBASE CONFIGURATION ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyASatA2lpfx7V6ibZdjWbVds7IqXddYbbo",
+      authDomain: "absen-transport-db.firebaseapp.com",
+      databaseURL: "https://absen-transport-db-default-rtdb.firebaseio.com",
+      projectId: "absen-transport-db",
+      storageBucket: "absen-transport-db.firebasestorage.app",
+      messagingSenderId: "956969210596",
+      appId: "1:956969210596:web:5f50fbb887a31cf503d2f1",
+      measurementId: "G-FFBQ1FFDX0"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Data State Local Sync
+    let hotelList = ["Hotel Grand Cokro", "Hotel Rasuna", "Hotel GBK"];
+    let attendanceLogs = [];
 
     // --- INITIALIZATION ---
     document.addEventListener("DOMContentLoaded", () => {
       lucide.createIcons();
       populateHourDropdown();
-      populateHotelDropdown();
-      renderManagerHotelView();
+
+      // Listen to Realtime Database Changes (Hotel List)
+      db.ref("hotels").on("value", (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          hotelList = Object.values(data);
+        } else {
+          // Initialize default hotels if DB is empty
+          db.ref("hotels").set(hotelList);
+        }
+        populateHotelDropdown();
+        renderManagerHotelView();
+      });
+
+      // Listen to Realtime Database Changes (Attendance Logs)
+      db.ref("attendance").on("value", (snapshot) => {
+        const data = snapshot.val();
+        attendanceLogs = [];
+        if (data) {
+          Object.keys(data).forEach(key => {
+            attendanceLogs.push({ id: key, ...data[key] });
+          });
+        }
+        renderManagerHotelView();
+      });
     });
 
     // --- TAB SWITCHER ---
@@ -197,7 +224,7 @@
       }
     }
 
-    // --- POPULATE HOTEL DROPDOWN (TAB 1) ---
+    // --- POPULATE HOTEL DROPDOWN ---
     function populateHotelDropdown() {
       const select = document.getElementById('select-hotel');
       select.innerHTML = '<option value="">-- Pilih Hotel --</option>';
@@ -210,31 +237,45 @@
       });
     }
 
-    // --- SUBMIT ABSENSI KARYAWAN ---
+    // --- SUBMIT ABSENSI KARYAWAN (SEND TO FIREBASE) ---
     function handleAttendanceSubmit(e) {
       e.preventDefault();
 
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.innerText = "Mengirim...";
+
       const newLog = {
-        id: Date.now().toString(),
-        nama: document.getElementById('input-nama').value.trim().toUpperCase(),     // Auto Uppercase
-        divisi: document.getElementById('input-divisi').value.trim().toUpperCase(), // Auto Uppercase
-        tujuan: document.getElementById('input-tujuan').value.trim().toUpperCase(), // Auto Uppercase
+        nama: document.getElementById('input-nama').value.trim().toUpperCase(),
+        divisi: document.getElementById('input-divisi').value.trim().toUpperCase(),
+        tujuan: document.getElementById('input-tujuan').value.trim().toUpperCase(),
         jam: document.getElementById('input-jam').value,
         hotel: document.getElementById('select-hotel').value,
         catatan: document.getElementById('input-catatan').value.trim() || '-',
+        timestamp: Date.now(),
         tanggal: new Date().toLocaleDateString('id-ID')
       };
 
-      attendanceLogs.push(newLog);
-      localStorage.setItem('app_attendance_logs_v2', JSON.stringify(attendanceLogs));
-
-      alert(`Absensi Berhasil!\n\nNama: ${newLog.nama}\nDivisi: ${newLog.divisi}\nTujuan: ${newLog.tujuan}\nHotel: ${newLog.hotel}\nData tersimpan dalam Halaman Manager.`);
-      document.getElementById('attendance-form').reset();
+      // Push data to Firebase Realtime Database
+      db.ref("attendance").push(newLog)
+        .then(() => {
+          alert(`Absensi Berhasil!\n\nNama: ${newLog.nama}\nDivisi: ${newLog.divisi}\nTujuan: ${newLog.tujuan}\nHotel: ${newLog.hotel}\nData telah terkirim secara real-time.`);
+          document.getElementById('attendance-form').reset();
+        })
+        .catch(err => {
+          alert("Gagal mengirim data: " + err.message);
+        })
+        .finally(() => {
+          btn.disabled = false;
+          btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i> Kirim Absen & Transportasi`;
+          lucide.createIcons();
+        });
     }
 
     // --- MANAGER VIEW: RENDER HOTEL CARDS & TABLES ---
     function renderManagerHotelView() {
       const container = document.getElementById('hotel-cards-container');
+      if (!container) return;
       container.innerHTML = '';
 
       if (hotelList.length === 0) {
@@ -328,15 +369,14 @@
       lucide.createIcons();
     }
 
-    // --- HELPER FUNCTIONS ---
+    // --- HOTEL & LOG ACTIONS WITH FIREBASE ---
     function addHotelModal() {
       const name = prompt("Masukkan Nama Hotel Baru:");
       if (name && name.trim() !== "") {
-        if (!hotelList.includes(name.trim())) {
-          hotelList.push(name.trim());
-          localStorage.setItem('app_hotel_list', JSON.stringify(hotelList));
-          populateHotelDropdown();
-          renderManagerHotelView();
+        const hotelTrimmed = name.trim();
+        if (!hotelList.includes(hotelTrimmed)) {
+          hotelList.push(hotelTrimmed);
+          db.ref("hotels").set(hotelList);
         } else {
           alert("Nama hotel sudah ada di daftar!");
         }
@@ -346,29 +386,13 @@
     function removeHotel(hotelName) {
       if (confirm(`Apakah Anda yakin ingin menghapus "${hotelName}" dari daftar hotel?`)) {
         hotelList = hotelList.filter(h => h !== hotelName);
-        localStorage.setItem('app_hotel_list', JSON.stringify(hotelList));
-        populateHotelDropdown();
-        renderManagerHotelView();
+        db.ref("hotels").set(hotelList);
       }
     }
 
     function deleteLog(logId) {
       if (confirm("Hapus data absensi karyawan ini?")) {
-        attendanceLogs = attendanceLogs.filter(l => l.id !== logId);
-        localStorage.setItem('app_attendance_logs_v2', JSON.stringify(attendanceLogs));
-        renderManagerHotelView();
-      }
-    }
-
-    function resetDataDemo() {
-      if (confirm("Kembalikan data hotel & absensi ke data awal?")) {
-        hotelList = [...DEFAULT_HOTELS];
-        attendanceLogs = [...DEFAULT_LOGS];
-        localStorage.setItem('app_hotel_list', JSON.stringify(hotelList));
-        localStorage.setItem('app_attendance_logs_v2', JSON.stringify(attendanceLogs));
-        populateHourDropdown();
-        populateHotelDropdown();
-        renderManagerHotelView();
+        db.ref(`attendance/${logId}`).remove();
       }
     }
   </script>
