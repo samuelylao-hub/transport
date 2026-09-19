@@ -108,7 +108,7 @@
     <!-- TAB 2: HALAMAN MANAGER (SISTER DAFTAR HOTEL)-->
     <!-- ========================================== -->
     <div id="view-manager" class="space-y-6 hidden">
-      <!-- Top Action Bar -->
+      <!-- Top Action & Filter Bar -->
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
         <div>
           <div class="flex items-center gap-2">
@@ -117,14 +117,34 @@
             </span>
             <h2 class="text-xl font-bold text-slate-800">Pusat Data Absensi Per Hotel</h2>
           </div>
-          <p class="text-sm text-slate-500 mt-1">Setiap karyawan yang mengisi form absensi akan tersortir otomatis secara real-time ke dalam hotel tujuan.</p>
+          <p class="text-sm text-slate-500 mt-1">Tampilan reset otomatis per hari. Pilih tanggal untuk melihat riwayat lampau & unduh laporan Excel.</p>
         </div>
         
-        <div class="flex items-center gap-3">
-          <button onclick="addHotelModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-lg shadow-sm transition flex items-center gap-2">
-            <i data-lucide="plus" class="w-4 h-4"></i> Tambah Hotel Baru
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Filter Tanggal -->
+          <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+            <i data-lucide="calendar" class="w-4 h-4 text-slate-500 ml-2"></i>
+            <input type="date" id="filter-date" onchange="handleDateFilterChange()" class="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none pr-2">
+          </div>
+
+          <!-- Tombol Export Excel (CSV) -->
+          <button onclick="exportToCSV()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-xl shadow-sm transition flex items-center gap-1.5">
+            <i data-lucide="download" class="w-4 h-4"></i> Export Excel (.csv)
+          </button>
+
+          <!-- Tombol Tambah Hotel -->
+          <button onclick="addHotelModal()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-xl shadow-sm transition flex items-center gap-1.5">
+            <i data-lucide="plus" class="w-4 h-4"></i> Tambah Hotel
           </button>
         </div>
+      </div>
+
+      <!-- Info Banner Tanggal Terpilih -->
+      <div id="date-info-banner" class="bg-indigo-50 border border-indigo-100 p-3.5 rounded-xl flex items-center justify-between text-xs text-indigo-900 font-medium">
+        <span>Menampilkan Data Untuk Tanggal: <strong id="current-view-date-label">--</strong></span>
+        <button onclick="resetDateToToday()" class="text-indigo-600 hover:underline flex items-center gap-1">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Kembali ke Hari Ini
+        </button>
       </div>
 
       <!-- Hotel Sections Container -->
@@ -159,11 +179,25 @@
     // Data State Local Sync
     let hotelList = ["Hotel Grand Cokro", "Hotel Rasuna", "Hotel GBK"];
     let attendanceLogs = [];
+    let selectedDate = getTodayDateKey(); // Format YYYY-MM-DD
+
+    // --- HELPER FUNCTION: GET TODAY DATE KEY (YYYY-MM-DD) ---
+    function getTodayDateKey() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
 
     // --- INITIALIZATION ---
     document.addEventListener("DOMContentLoaded", () => {
       lucide.createIcons();
       populateHourDropdown();
+      
+      // Set input filter date default to today
+      const filterInput = document.getElementById('filter-date');
+      if (filterInput) filterInput.value = selectedDate;
 
       // Listen to Realtime Database Changes (Hotel List)
       db.ref("hotels").on("value", (snapshot) => {
@@ -171,7 +205,6 @@
         if (data) {
           hotelList = Object.values(data);
         } else {
-          // Initialize default hotels if DB is empty
           db.ref("hotels").set(hotelList);
         }
         populateHotelDropdown();
@@ -190,6 +223,21 @@
         renderManagerHotelView();
       });
     });
+
+    // --- DATE FILTER HANDLER ---
+    function handleDateFilterChange() {
+      const val = document.getElementById('filter-date').value;
+      if (val) {
+        selectedDate = val;
+        renderManagerHotelView();
+      }
+    }
+
+    function resetDateToToday() {
+      selectedDate = getTodayDateKey();
+      document.getElementById('filter-date').value = selectedDate;
+      renderManagerHotelView();
+    }
 
     // --- TAB SWITCHER ---
     function switchTab(tabName) {
@@ -237,13 +285,16 @@
       });
     }
 
-    // --- SUBMIT ABSENSI KARYAWAN (SEND TO FIREBASE) ---
+    // --- SUBMIT ABSENSI KARYAWAN (SEND TO FIREBASE WITH DATE KEY) ---
     function handleAttendanceSubmit(e) {
       e.preventDefault();
 
       const btn = document.getElementById('submit-btn');
       btn.disabled = true;
       btn.innerText = "Mengirim...";
+
+      const todayKey = getTodayDateKey();
+      const now = new Date();
 
       const newLog = {
         nama: document.getElementById('input-nama').value.trim().toUpperCase(),
@@ -252,14 +303,15 @@
         jam: document.getElementById('input-jam').value,
         hotel: document.getElementById('select-hotel').value,
         catatan: document.getElementById('input-catatan').value.trim() || '-',
+        dateKey: todayKey,
         timestamp: Date.now(),
-        tanggal: new Date().toLocaleDateString('id-ID')
+        tanggalFormat: now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
       };
 
-      // Push data to Firebase Realtime Database
+      // Push data to Firebase
       db.ref("attendance").push(newLog)
         .then(() => {
-          alert(`Absensi Berhasil!\n\nNama: ${newLog.nama}\nDivisi: ${newLog.divisi}\nTujuan: ${newLog.tujuan}\nHotel: ${newLog.hotel}\nData telah terkirim secara real-time.`);
+          alert(`Absensi Berhasil!\n\nNama: ${newLog.nama}\nDivisi: ${newLog.divisi}\nTujuan: ${newLog.tujuan}\nHotel: ${newLog.hotel}\nData terkirim secara real-time.`);
           document.getElementById('attendance-form').reset();
         })
         .catch(err => {
@@ -272,23 +324,41 @@
         });
     }
 
-    // --- MANAGER VIEW: RENDER HOTEL CARDS & TABLES ---
+    // --- MANAGER VIEW: RENDER HOTEL CARDS & TABLES (FILTERED BY DATE) ---
     function renderManagerHotelView() {
       const container = document.getElementById('hotel-cards-container');
+      const label = document.getElementById('current-view-date-label');
       if (!container) return;
+
+      // Update Label Tanggal
+      if (label) label.textContent = selectedDate === getTodayDateKey() ? `${selectedDate} (Hari Ini)` : selectedDate;
+
       container.innerHTML = '';
 
       if (hotelList.length === 0) {
         container.innerHTML = `
           <div class="bg-white p-8 rounded-2xl text-center text-slate-400 border border-slate-200">
-            Belum ada hotel yang terdaftar. Klik "Tambah Hotel Baru" untuk menambah daftar hotel.
+            Belum ada hotel yang terdaftar. Klik "Tambah Hotel" untuk menambah daftar hotel.
           </div>
         `;
         return;
       }
 
+      // Filter data absensi berdasarkan tanggal yang dipilih
+      const filteredLogs = attendanceLogs.filter(log => {
+        // Fallback untuk data lama yang belum punya dateKey
+        if (!log.dateKey && log.timestamp) {
+          const d = new Date(log.timestamp);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          log.dateKey = `${y}-${m}-${day}`;
+        }
+        return log.dateKey === selectedDate;
+      });
+
       hotelList.forEach((hotelName, index) => {
-        const logsForHotel = attendanceLogs.filter(log => log.hotel === hotelName);
+        const logsForHotel = filteredLogs.filter(log => log.hotel === hotelName);
 
         const card = document.createElement('div');
         card.className = "bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden space-y-0";
@@ -299,7 +369,7 @@
           tableRowsHtml = `
             <tr>
               <td colspan="7" class="py-6 text-center text-slate-400 text-xs">
-                Belum ada karyawan yang terdaftar di ${hotelName}
+                Tidak ada data absensi untuk ${hotelName} pada tanggal ${selectedDate}
               </td>
             </tr>
           `;
@@ -367,6 +437,56 @@
       });
 
       lucide.createIcons();
+    }
+
+    // --- EXPORT DATA TO EXCEL (CSV FORMAT) ---
+    function exportToCSV() {
+      if (attendanceLogs.length === 0) {
+        alert("Belum ada data absensi untuk diexport!");
+        return;
+      }
+
+      // Tanya pengguna apakah ingin export tanggal terpilih saja atau SEMUA data
+      const isAll = confirm(`Tekan 'OK' untuk mengunduh SEMUA DATA ABSENSI (untuk laporan bulanan).\nTekan 'Cancel' untuk mengunduh HANYA data tanggal ${selectedDate}.`);
+
+      let logsToExport = attendanceLogs;
+      let filename = `Laporan_Absensi_Semua_Data.csv`;
+
+      if (!isAll) {
+        logsToExport = attendanceLogs.filter(log => log.dateKey === selectedDate);
+        filename = `Laporan_Absensi_${selectedDate}.csv`;
+      }
+
+      if (logsToExport.length === 0) {
+        alert("Tidak ada data untuk diexport pada pilihan ini.");
+        return;
+      }
+
+      // Buat Header CSV
+      let csvContent = "data:text/csv;charset=utf-8,Tanggal,Nama Karyawan,Divisi,Tujuan Kerja,Hotel,Jam Transport,Catatan\n";
+
+      // Isi Data CSV
+      logsToExport.forEach(log => {
+        const row = [
+          `"${log.dateKey || '-'}"`,
+          `"${log.nama || '-'}"`,
+          `"${log.divisi || '-'}"`,
+          `"${log.tujuan || '-'}"`,
+          `"${log.hotel || '-'}"`,
+          `"${log.jam || '-'}"`,
+          `"${(log.catatan || '-').replace(/"/g, '""')}"`
+        ].join(",");
+        csvContent += row + "\n";
+      });
+
+      // Buka tautan unduh file CSV
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     // --- HOTEL & LOG ACTIONS WITH FIREBASE ---
