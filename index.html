@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Absensi & Transportasi Hotel Karyawan</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Header / Navigation -->
+  <header class="bg-indigo-900 text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-indigo-700 rounded-lg">
+          <i data-lucide="hotel" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">System Absensi & Transport</h1>
+          <p class="text-xs text-indigo-200">Manajemen Penjemputan & Hotel Karyawan</p>
+        </div>
+      </div>
+      
+      <!-- Nav Tabs -->
+      <div class="flex bg-indigo-950/60 p-1 rounded-xl border border-indigo-700/50">
+        <button onclick="switchTab('employee')" id="tab-employee" class="px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 bg-indigo-600 text-white shadow-sm">
+          <i data-lucide="clipboard-edit" class="w-4 h-4"></i>
+          Form Absen Karyawan
+        </button>
+        <button onclick="switchTab('manager')" id="tab-manager" class="px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 text-indigo-200 hover:text-white">
+          <i data-lucide="building-2" class="w-4 h-4"></i>
+          Halaman Manager (Data Hotel)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: FORM ABSEN KARYAWAN                 -->
+    <!-- ========================================== -->
+    <div id="view-employee" class="space-y-6 max-w-2xl mx-auto">
+      <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-bold text-slate-800">Form Absensi & Transport Karyawan</h2>
+          <p class="text-sm text-slate-500 mt-1">Isi detail keberangkatan dan pilih lokasi hotel tujuan Anda</p>
+        </div>
+
+        <form id="attendance-form" onsubmit="handleAttendanceSubmit(event)" class="space-y-4">
+          <!-- A. Nama (Auto Uppercase) -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap <span class="text-rose-500">*</span></label>
+            <input type="text" id="input-nama" required placeholder="MASUKKAN NAMA LENGKAP" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 focus:ring-indigo-500 focus:border-indigo-500 uppercase" style="text-transform: uppercase;">
+          </div>
+
+          <!-- B. Divisi & C. Tujuan (Auto Uppercase) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Divisi <span class="text-rose-500">*</span></label>
+              <input type="text" id="input-divisi" required placeholder="CONTOH: NETWORK / MARKETING" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 focus:ring-indigo-500 focus:border-indigo-500 uppercase" style="text-transform: uppercase;">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Tujuan Kerja <span class="text-rose-500">*</span></label>
+              <input type="text" id="input-tujuan" required placeholder="CONTOH: LEBAK BULUS / SITE INSPECTION" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 focus:ring-indigo-500 focus:border-indigo-500 uppercase" style="text-transform: uppercase;">
+            </div>
+          </div>
+
+          <!-- D. Jam Ikut Transport (Dropdown 24 Jam) & F. Pilihan Hotel -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Jam Ikut Transport <span class="text-rose-500">*</span></label>
+              <select id="input-jam" required class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">-- Pilih Jam --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Pilihan Hotel <span class="text-rose-500">*</span></label>
+              <select id="select-hotel" required class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">-- Pilih Hotel --</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- E. Catatan (Opsional) -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
+            <input type="text" id="input-catatan" placeholder="Contoh: Minta penjemputan di lobby belakang" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 focus:ring-indigo-500 focus:border-indigo-500">
+          </div>
+
+          <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-200 transition flex items-center justify-center gap-2">
+            <i data-lucide="send" class="w-4 h-4"></i> Kirim Absen & Transportasi
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: HALAMAN MANAGER (SISTER DAFTAR HOTEL)-->
+    <!-- ========================================== -->
+    <div id="view-manager" class="space-y-6 hidden">
+      <!-- Top Action Bar -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">Host Dashboard</span>
+            <h2 class="text-xl font-bold text-slate-800">Pusat Data Absensi Per Hotel</h2>
+          </div>
+          <p class="text-sm text-slate-500 mt-1">Setiap karyawan yang mengisi form absensi akan tersortir otomatis ke dalam masing-masing hotel tujuan.</p>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <button onclick="addHotelModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-lg shadow-sm transition flex items-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4"></i> Tambah Hotel Baru
+          </button>
+          <button onclick="resetDataDemo()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm rounded-lg transition" title="Reset Data Demo">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hotel Sections Container -->
+      <div id="hotel-cards-container" class="space-y-6">
+        <!-- Rendered Dynamic Hotel Tables -->
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // --- DATA DEFAULT (STORED IN LOCALSTORAGE) ---
+    const DEFAULT_HOTELS = ["Hotel Grand Cokro", "Hotel Rasuna", "Hotel GBK"];
+    
+    const DEFAULT_LOGS = [
+      {
+        id: "1",
+        nama: "ASRI",
+        divisi: "ABC",
+        tujuan: "LEBAK BULUS",
+        jam: "12.00",
+        hotel: "Hotel Rasuna",
+        catatan: "Bawa perlengkapan alat",
+        tanggal: new Date().toLocaleDateString('id-ID')
+      }
+    ];
+
+    let hotelList = JSON.parse(localStorage.getItem('app_hotel_list')) || DEFAULT_HOTELS;
+    let attendanceLogs = JSON.parse(localStorage.getItem('app_attendance_logs_v2')) || DEFAULT_LOGS;
+
+    // --- INITIALIZATION ---
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      populateHourDropdown();
+      populateHotelDropdown();
+      renderManagerHotelView();
+    });
+
+    // --- TAB SWITCHER ---
+    function switchTab(tabName) {
+      ['employee', 'manager'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.add('hidden');
+        const btn = document.getElementById(`tab-${t}`);
+        btn.className = "px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 text-indigo-200 hover:text-white";
+      });
+
+      document.getElementById(`view-${tabName}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-${tabName}`);
+      activeBtn.className = "px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 bg-indigo-600 text-white shadow-sm";
+
+      if (tabName === 'manager') renderManagerHotelView();
+      if (tabName === 'employee') {
+        populateHourDropdown();
+        populateHotelDropdown();
+      }
+    }
+
+    // --- POPULATE JAM BULAT 24 JAM (00.00 - 23.00) ---
+    function populateHourDropdown() {
+      const select = document.getElementById('input-jam');
+      select.innerHTML = '<option value="">-- Pilih Jam --</option>';
+
+      for (let i = 0; i < 24; i++) {
+        const hour = i < 10 ? `0${i}.00` : `${i}.00`;
+        const option = document.createElement('option');
+        option.value = hour;
+        option.textContent = hour;
+        select.appendChild(option);
+      }
+    }
+
+    // --- POPULATE HOTEL DROPDOWN (TAB 1) ---
+    function populateHotelDropdown() {
+      const select = document.getElementById('select-hotel');
+      select.innerHTML = '<option value="">-- Pilih Hotel --</option>';
+
+      hotelList.forEach(hotel => {
+        const option = document.createElement('option');
+        option.value = hotel;
+        option.textContent = hotel;
+        select.appendChild(option);
+      });
+    }
+
+    // --- SUBMIT ABSENSI KARYAWAN ---
+    function handleAttendanceSubmit(e) {
+      e.preventDefault();
+
+      const newLog = {
+        id: Date.now().toString(),
+        nama: document.getElementById('input-nama').value.trim().toUpperCase(),     // Auto Uppercase
+        divisi: document.getElementById('input-divisi').value.trim().toUpperCase(), // Auto Uppercase
+        tujuan: document.getElementById('input-tujuan').value.trim().toUpperCase(), // Auto Uppercase
+        jam: document.getElementById('input-jam').value,
+        hotel: document.getElementById('select-hotel').value,
+        catatan: document.getElementById('input-catatan').value.trim() || '-',
+        tanggal: new Date().toLocaleDateString('id-ID')
+      };
+
+      attendanceLogs.push(newLog);
+      localStorage.setItem('app_attendance_logs_v2', JSON.stringify(attendanceLogs));
+
+      alert(`Absensi Berhasil!\n\nNama: ${newLog.nama}\nDivisi: ${newLog.divisi}\nTujuan: ${newLog.tujuan}\nHotel: ${newLog.hotel}\nData tersimpan dalam Halaman Manager.`);
+      document.getElementById('attendance-form').reset();
+    }
+
+    // --- MANAGER VIEW: RENDER HOTEL CARDS & TABLES ---
+    function renderManagerHotelView() {
+      const container = document.getElementById('hotel-cards-container');
+      container.innerHTML = '';
+
+      if (hotelList.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white p-8 rounded-2xl text-center text-slate-400 border border-slate-200">
+            Belum ada hotel yang terdaftar. Klik "Tambah Hotel Baru" untuk menambah daftar hotel.
+          </div>
+        `;
+        return;
+      }
+
+      hotelList.forEach((hotelName, index) => {
+        const logsForHotel = attendanceLogs.filter(log => log.hotel === hotelName);
+
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden space-y-0";
+
+        let tableRowsHtml = '';
+
+        if (logsForHotel.length === 0) {
+          tableRowsHtml = `
+            <tr>
+              <td colspan="7" class="py-6 text-center text-slate-400 text-xs">
+                Belum ada karyawan yang terdaftar di ${hotelName}
+              </td>
+            </tr>
+          `;
+        } else {
+          logsForHotel.forEach((log, idx) => {
+            tableRowsHtml += `
+              <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-xs">
+                <td class="py-3 px-4 text-center font-medium text-slate-400">${idx + 1}</td>
+                <td class="py-3 px-4 font-bold text-slate-800">${log.nama}</td>
+                <td class="py-3 px-4 text-slate-600 font-semibold">${log.divisi}</td>
+                <td class="py-3 px-4 text-slate-600 font-medium">${log.tujuan}</td>
+                <td class="py-3 px-4">
+                  <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded-md border border-indigo-100">
+                    ${log.jam} WIB
+                  </span>
+                </td>
+                <td class="py-3 px-4 text-slate-500">${log.catatan}</td>
+                <td class="py-3 px-4 text-center">
+                  <button onclick="deleteLog('${log.id}')" class="text-slate-400 hover:text-rose-600 transition" title="Hapus Log">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </button>
+                </td>
+              </tr>
+            `;
+          });
+        }
+
+        card.innerHTML = `
+          <div class="p-4 bg-slate-900 text-white flex justify-between items-center">
+            <div class="flex items-center gap-3">
+              <span class="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center font-bold text-xs">
+                ${index + 1}
+              </span>
+              <div>
+                <h3 class="font-bold text-base text-white">${hotelName}</h3>
+                <span class="text-xs text-slate-400">Total Karyawan: ${logsForHotel.length} Orang</span>
+              </div>
+            </div>
+            <button onclick="removeHotel('${hotelName}')" class="text-slate-400 hover:text-rose-400 text-xs flex items-center gap-1 transition" title="Hapus Hotel">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Hapus Hotel
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-100 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                  <th class="py-3 px-4 w-12 text-center">No</th>
+                  <th class="py-3 px-4">Nama</th>
+                  <th class="py-3 px-4">Divisi</th>
+                  <th class="py-3 px-4">Tujuan</th>
+                  <th class="py-3 px-4">Jam Transport</th>
+                  <th class="py-3 px-4">Catatan</th>
+                  <th class="py-3 px-4 w-16 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${tableRowsHtml}
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    // --- HELPER FUNCTIONS ---
+    function addHotelModal() {
+      const name = prompt("Masukkan Nama Hotel Baru:");
+      if (name && name.trim() !== "") {
+        if (!hotelList.includes(name.trim())) {
+          hotelList.push(name.trim());
+          localStorage.setItem('app_hotel_list', JSON.stringify(hotelList));
+          populateHotelDropdown();
+          renderManagerHotelView();
+        } else {
+          alert("Nama hotel sudah ada di daftar!");
+        }
+      }
+    }
+
+    function removeHotel(hotelName) {
+      if (confirm(`Apakah Anda yakin ingin menghapus "${hotelName}" dari daftar hotel?`)) {
+        hotelList = hotelList.filter(h => h !== hotelName);
+        localStorage.setItem('app_hotel_list', JSON.stringify(hotelList));
+        populateHotelDropdown();
+        renderManagerHotelView();
+      }
+    }
+
+    function deleteLog(logId) {
+      if (confirm("Hapus data absensi karyawan ini?")) {
+        attendanceLogs = attendanceLogs.filter(l => l.id !== logId);
+        localStorage.setItem('app_attendance_logs_v2', JSON.stringify(attendanceLogs));
+        renderManagerHotelView();
+      }
+    }
+
+    function resetDataDemo() {
+      if (confirm("Kembalikan data hotel & absensi ke data awal?")) {
+        hotelList = [...DEFAULT_HOTELS];
+        attendanceLogs = [...DEFAULT_LOGS];
+        localStorage.setItem('app_hotel_list', JSON.stringify(hotelList));
+        localStorage.setItem('app_attendance_logs_v2', JSON.stringify(attendanceLogs));
+        populateHourDropdown();
+        populateHotelDropdown();
+        renderManagerHotelView();
+      }
+    }
+  </script>
+</body>
+</html>
